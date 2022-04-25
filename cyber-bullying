@@ -1,0 +1,1789 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Proggramming Assignment - 2 \n",
+    "Peddinti Mani Babu - 190C2020011 \n",
+    "Sura Chandra Sekhar Reddy - 190C2030063\n",
+    "\n",
+    "**Problem 1**\n",
+    "Text Classification - Solve the following Multi-class Classification Problem –\n",
+    "Cyberbullying Classification\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:32:06.349164Z",
+     "iopub.status.busy": "2022-04-10T13:32:06.348231Z",
+     "iopub.status.idle": "2022-04-10T13:32:06.384982Z",
+     "shell.execute_reply": "2022-04-10T13:32:06.383698Z",
+     "shell.execute_reply.started": "2022-04-10T13:32:06.349051Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "# This Python 3 environment comes with many helpful analytics libraries installed\n",
+    "# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python\n",
+    "# For example, here's several helpful packages to load\n",
+    "\n",
+    "import numpy as np # linear algebra\n",
+    "import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)\n",
+    "\n",
+    "# Input data files are available in the read-only \"../input/\" directory\n",
+    "# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory\n",
+    "\n",
+    "import os\n",
+    "for dirname, _, filenames in os.walk('/kaggle/input'):\n",
+    "    for filename in filenames:\n",
+    "        print(os.path.join(dirname, filename))\n",
+    "# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using \"Save & Run All\" \n",
+    "# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:54:01.743844Z",
+     "iopub.status.busy": "2022-04-10T14:54:01.743567Z",
+     "iopub.status.idle": "2022-04-10T14:54:01.753880Z",
+     "shell.execute_reply": "2022-04-10T14:54:01.752840Z",
+     "shell.execute_reply.started": "2022-04-10T14:54:01.743814Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "\n",
+    "import emoji\n",
+    "import re, string\n",
+    "from nltk.corpus import stopwords\n",
+    "stop_words = set(stopwords.words('english'))\n",
+    "\n",
+    "\n",
+    "from nltk.stem import WordNetLemmatizer,PorterStemmer\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from nltk import word_tokenize\n",
+    "from tensorflow.keras.preprocessing.text import Tokenizer\n",
+    "\n",
+    "from tensorflow.keras.preprocessing import sequence\n",
+    "from tensorflow.keras.layers import LSTM, Activation, Dense, Dropout, Input, Embedding\n",
+    "from tensorflow.keras.models import Model\n",
+    "\n",
+    "from collections import Counter\n",
+    "from gensim.models import Word2Vec\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "\n",
+    "import torch\n",
+    "import torch.nn as nn\n",
+    "import torch.nn.functional as F\n",
+    "from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler\n",
+    "from sklearn.metrics import classification_report\n",
+    "from sklearn.metrics import confusion_matrix\n",
+    "from sklearn.metrics import roc_auc_score"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:32:15.579308Z",
+     "iopub.status.busy": "2022-04-10T13:32:15.578521Z",
+     "iopub.status.idle": "2022-04-10T13:32:15.786546Z",
+     "shell.execute_reply": "2022-04-10T13:32:15.785686Z",
+     "shell.execute_reply.started": "2022-04-10T13:32:15.579259Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[nltk_data] Downloading package punkt to\n",
+      "[nltk_data]     C:\\Users\\kasan\\AppData\\Roaming\\nltk_data...\n",
+      "[nltk_data]   Unzipping tokenizers\\punkt.zip.\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "True"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import nltk\n",
+    "nltk.download('punkt')\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**Data PreProcessing**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:32:15.789567Z",
+     "iopub.status.busy": "2022-04-10T13:32:15.788745Z",
+     "iopub.status.idle": "2022-04-10T13:32:16.020653Z",
+     "shell.execute_reply": "2022-04-10T13:32:16.020014Z",
+     "shell.execute_reply.started": "2022-04-10T13:32:15.789519Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "df = pd.read_csv(\"cyberbullying_tweets.csv\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:32:16.022031Z",
+     "iopub.status.busy": "2022-04-10T13:32:16.021790Z",
+     "iopub.status.idle": "2022-04-10T13:32:16.034078Z",
+     "shell.execute_reply": "2022-04-10T13:32:16.033211Z",
+     "shell.execute_reply.started": "2022-04-10T13:32:16.022001Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "df = df.rename(columns={'tweet_text': 'tweet', 'cyberbullying_type': 'val'})"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:32:16.035724Z",
+     "iopub.status.busy": "2022-04-10T13:32:16.035468Z",
+     "iopub.status.idle": "2022-04-10T13:32:16.058498Z",
+     "shell.execute_reply": "2022-04-10T13:32:16.057696Z",
+     "shell.execute_reply.started": "2022-04-10T13:32:16.035694Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "religion               7998\n",
+       "age                    7992\n",
+       "gender                 7973\n",
+       "ethnicity              7961\n",
+       "not_cyberbullying      7945\n",
+       "other_cyberbullying    7823\n",
+       "Name: val, dtype: int64"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df.val.value_counts()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:32:16.060235Z",
+     "iopub.status.busy": "2022-04-10T13:32:16.059629Z",
+     "iopub.status.idle": "2022-04-10T13:32:16.105860Z",
+     "shell.execute_reply": "2022-04-10T13:32:16.105311Z",
+     "shell.execute_reply.started": "2022-04-10T13:32:16.060203Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "36"
+      ]
+     },
+     "execution_count": 12,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df.duplicated().sum()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:32:16.107407Z",
+     "iopub.status.busy": "2022-04-10T13:32:16.107029Z",
+     "iopub.status.idle": "2022-04-10T13:32:16.148646Z",
+     "shell.execute_reply": "2022-04-10T13:32:16.148010Z",
+     "shell.execute_reply.started": "2022-04-10T13:32:16.107362Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "df = df[~df.duplicated()]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**Tweets text deep cleaning**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:32:16.150078Z",
+     "iopub.status.busy": "2022-04-10T13:32:16.149825Z",
+     "iopub.status.idle": "2022-04-10T13:32:16.169338Z",
+     "shell.execute_reply": "2022-04-10T13:32:16.168501Z",
+     "shell.execute_reply.started": "2022-04-10T13:32:16.150047Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "#Clean emojis from text\n",
+    "def strip_emoji(text):\n",
+    "    return re.sub(emoji.get_emoji_regexp(), r\"\", text) #remove emoji\n",
+    "\n",
+    "#Remove punctuations, links, stopwords, mentions and \\r\\n new line characters\n",
+    "def strip_all_entities(text): \n",
+    "    text = text.replace('\\r', '').replace('\\n', ' ').lower() #remove \\n and \\r and lowercase\n",
+    "    text = re.sub(r\"(?:\\@|https?\\://)\\S+\", \"\", text) #remove links and mentions\n",
+    "    text = re.sub(r'[^\\x00-\\x7f]',r'', text) #remove non utf8/ascii characters such as '\\x9a\\x91\\x97\\x9a\\x97'\n",
+    "    banned_list= string.punctuation\n",
+    "    table = str.maketrans('', '', banned_list)\n",
+    "    text = text.translate(table)\n",
+    "    text = [word for word in text.split() if word not in stop_words]\n",
+    "    text = ' '.join(text)\n",
+    "    text =' '.join(word for word in text.split() if len(word) < 14) # remove words longer than 14 characters\n",
+    "    return text\n",
+    "#remove contractions\n",
+    "def decontract(text):\n",
+    "    text = re.sub(r\"can\\'t\", \"can not\", text)\n",
+    "    text = re.sub(r\"n\\'t\", \" not\", text)\n",
+    "    text = re.sub(r\"\\'re\", \" are\", text)\n",
+    "    text = re.sub(r\"\\'s\", \" is\", text)\n",
+    "    text = re.sub(r\"\\'d\", \" would\", text)\n",
+    "    text = re.sub(r\"\\'ll\", \" will\", text)\n",
+    "    text = re.sub(r\"\\'t\", \" not\", text)\n",
+    "    text = re.sub(r\"\\'ve\", \" have\", text)\n",
+    "    text = re.sub(r\"\\'m\", \" am\", text)\n",
+    "    return text\n",
+    "\n",
+    "#clean hashtags at the end of the sentence, and keep those in the middle of the sentence by removing just the \"#\" symbol\n",
+    "def clean_hashtags(tweet):\n",
+    "    new_tweet = \" \".join(word.strip() for word in re.split('#(?!(?:hashtag)\\b)[\\w-]+(?=(?:\\s+#[\\w-]+)*\\s*$)', tweet)) #remove last hashtags\n",
+    "    new_tweet2 = \" \".join(word.strip() for word in re.split('#|_', new_tweet)) #remove hashtags symbol from words in the middle of the sentence\n",
+    "    return new_tweet2\n",
+    "\n",
+    "#Filter special characters such as \"&\" and \"$\" present in some words\n",
+    "def filter_chars(a):\n",
+    "    sent = []\n",
+    "    for word in a.split(' '):\n",
+    "        if ('$' in word) | ('&' in word):\n",
+    "            sent.append('')\n",
+    "        else:\n",
+    "            sent.append(word)\n",
+    "    return ' '.join(sent)\n",
+    "\n",
+    "#Remove multiple sequential spaces\n",
+    "def remove_mult_spaces(text):\n",
+    "    return re.sub(\"\\s\\s+\" , \" \", text)\n",
+    "\n",
+    "#Stemming\n",
+    "def stemmer(text):\n",
+    "    tokenized = nltk.word_tokenize(text)\n",
+    "    ps = PorterStemmer()\n",
+    "    return ' '.join([ps.stem(words) for words in tokenized])\n",
+    "\n",
+    "#Lemmatization \n",
+    "#NOTE:Stemming seems to work better for this dataset\n",
+    "def lemmatize(text):\n",
+    "    tokenized = nltk.word_tokenize(text)\n",
+    "    lm = WordNetLemmatizer()\n",
+    "    return ' '.join([lm.lemmatize(words) for words in tokenized])\n",
+    "\n",
+    "#Then we apply all the defined functions in the following order\n",
+    "def deep_clean(text):\n",
+    "    text = strip_emoji(text)\n",
+    "    text = decontract(text)\n",
+    "    text = strip_all_entities(text)\n",
+    "    text = clean_hashtags(text)\n",
+    "    text = filter_chars(text)\n",
+    "    text = remove_mult_spaces(text)\n",
+    "    text = stemmer(text)\n",
+    "    return text\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:32:16.172526Z",
+     "iopub.status.busy": "2022-04-10T13:32:16.172299Z",
+     "iopub.status.idle": "2022-04-10T13:33:36.973119Z",
+     "shell.execute_reply": "2022-04-10T13:33:36.972219Z",
+     "shell.execute_reply.started": "2022-04-10T13:32:16.172497Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\kasan\\AppData\\Local\\Temp/ipykernel_10804/1425444546.py:3: DeprecationWarning: 'emoji.get_emoji_regexp()' is deprecated and will be removed in version 2.0.0. If you want to remove emoji from a string, consider the method emoji.replace_emoji(str, replace='').\n",
+      "To hide this warning, pin/downgrade the package to 'emoji~=1.6.3'\n",
+      "  return re.sub(emoji.get_emoji_regexp(), r\"\", text) #remove emoji\n"
+     ]
+    }
+   ],
+   "source": [
+    "texts_new = []\n",
+    "for t in df.tweet:\n",
+    "    texts_new.append(deep_clean(t))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:33:36.974731Z",
+     "iopub.status.busy": "2022-04-10T13:33:36.974483Z",
+     "iopub.status.idle": "2022-04-10T13:33:36.984380Z",
+     "shell.execute_reply": "2022-04-10T13:33:36.983445Z",
+     "shell.execute_reply.started": "2022-04-10T13:33:36.974700Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "df['tweet_clean'] = texts_new"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:33:36.986225Z",
+     "iopub.status.busy": "2022-04-10T13:33:36.985742Z",
+     "iopub.status.idle": "2022-04-10T13:33:37.000255Z",
+     "shell.execute_reply": "2022-04-10T13:33:36.999443Z",
+     "shell.execute_reply.started": "2022-04-10T13:33:36.986177Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(47656, 3)"
+      ]
+     },
+     "execution_count": 17,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:33:37.002000Z",
+     "iopub.status.busy": "2022-04-10T13:33:37.001655Z",
+     "iopub.status.idle": "2022-04-10T13:33:37.024904Z",
+     "shell.execute_reply": "2022-04-10T13:33:37.024169Z",
+     "shell.execute_reply.started": "2022-04-10T13:33:37.001970Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "3058"
+      ]
+     },
+     "execution_count": 18,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df[\"tweet_clean\"].duplicated().sum()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:33:37.026616Z",
+     "iopub.status.busy": "2022-04-10T13:33:37.026207Z",
+     "iopub.status.idle": "2022-04-10T13:33:37.063639Z",
+     "shell.execute_reply": "2022-04-10T13:33:37.063006Z",
+     "shell.execute_reply.started": "2022-04-10T13:33:37.026584Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "df.drop_duplicates(\"tweet_clean\", inplace=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:33:37.065065Z",
+     "iopub.status.busy": "2022-04-10T13:33:37.064718Z",
+     "iopub.status.idle": "2022-04-10T13:33:37.080895Z",
+     "shell.execute_reply": "2022-04-10T13:33:37.080247Z",
+     "shell.execute_reply.started": "2022-04-10T13:33:37.065034Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "df = df[df[\"val\"]!=\"other_cyberbullying\"]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:13.626005Z",
+     "iopub.status.busy": "2022-04-10T13:36:13.625087Z",
+     "iopub.status.idle": "2022-04-10T13:36:13.630825Z",
+     "shell.execute_reply": "2022-04-10T13:36:13.630060Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:13.625944Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "val   = [\"religion\",\"age\",\"ethnicity\",\"gender\",\"not bullying\"]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:14.199159Z",
+     "iopub.status.busy": "2022-04-10T13:36:14.197628Z",
+     "iopub.status.idle": "2022-04-10T13:36:14.256969Z",
+     "shell.execute_reply": "2022-04-10T13:36:14.256037Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:14.199106Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "text_len = []\n",
+    "for text in df.tweet_clean:\n",
+    "    tweet_len = len(text.split())\n",
+    "    text_len.append(tweet_len)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:14.490123Z",
+     "iopub.status.busy": "2022-04-10T13:36:14.489796Z",
+     "iopub.status.idle": "2022-04-10T13:36:14.509817Z",
+     "shell.execute_reply": "2022-04-10T13:36:14.509112Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:14.490086Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "df['text_len'] = text_len"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:14.666603Z",
+     "iopub.status.busy": "2022-04-10T13:36:14.665848Z",
+     "iopub.status.idle": "2022-04-10T13:36:14.675332Z",
+     "shell.execute_reply": "2022-04-10T13:36:14.674704Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:14.666563Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "df = df[df['text_len'] > 3]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:14.849342Z",
+     "iopub.status.busy": "2022-04-10T13:36:14.848942Z",
+     "iopub.status.idle": "2022-04-10T13:36:14.857207Z",
+     "shell.execute_reply": "2022-04-10T13:36:14.856396Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:14.849311Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "df = df[df['text_len'] < 100]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 26,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:15.032777Z",
+     "iopub.status.busy": "2022-04-10T13:36:15.032233Z",
+     "iopub.status.idle": "2022-04-10T13:36:15.038395Z",
+     "shell.execute_reply": "2022-04-10T13:36:15.037761Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:15.032740Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "79"
+      ]
+     },
+     "execution_count": 26,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "max_len = np.max(df['text_len'])\n",
+    "max_len "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:15.208028Z",
+     "iopub.status.busy": "2022-04-10T13:36:15.207712Z",
+     "iopub.status.idle": "2022-04-10T13:36:15.214035Z",
+     "shell.execute_reply": "2022-04-10T13:36:15.213133Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:15.207981Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "df['val'] = df['val'].replace({'religion':0,'age':1,'ethnicity':2,'gender':3,'not_cyberbullying':4})"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 28,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:15.400012Z",
+     "iopub.status.busy": "2022-04-10T13:36:15.399686Z",
+     "iopub.status.idle": "2022-04-10T13:36:15.404859Z",
+     "shell.execute_reply": "2022-04-10T13:36:15.403958Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:15.399977Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "X = df['tweet_clean']\n",
+    "y = df['val']"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:16.036545Z",
+     "iopub.status.busy": "2022-04-10T13:36:16.035911Z",
+     "iopub.status.idle": "2022-04-10T13:36:16.060727Z",
+     "shell.execute_reply": "2022-04-10T13:36:16.059852Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:16.036503Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 30,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:17.033177Z",
+     "iopub.status.busy": "2022-04-10T13:36:17.032683Z",
+     "iopub.status.idle": "2022-04-10T13:36:17.055074Z",
+     "shell.execute_reply": "2022-04-10T13:36:17.054304Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:17.033125Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train, test_size=0.1, stratify=y_train, random_state=42)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 31,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:17.275158Z",
+     "iopub.status.busy": "2022-04-10T13:36:17.274631Z",
+     "iopub.status.idle": "2022-04-10T13:36:17.283752Z",
+     "shell.execute_reply": "2022-04-10T13:36:17.282707Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:17.275119Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[   0, 5683],\n",
+       "       [   1, 5638],\n",
+       "       [   2, 5549],\n",
+       "       [   3, 5264],\n",
+       "       [   4, 4587]], dtype=int64)"
+      ]
+     },
+     "execution_count": 31,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "(unique, counts) = np.unique(y_train, return_counts=True)\n",
+    "np.asarray((unique, counts)).T"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**Data preprocessing for LSTM**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 32,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:36:18.319906Z",
+     "iopub.status.busy": "2022-04-10T13:36:18.319645Z",
+     "iopub.status.idle": "2022-04-10T13:36:18.329475Z",
+     "shell.execute_reply": "2022-04-10T13:36:18.328645Z",
+     "shell.execute_reply.started": "2022-04-10T13:36:18.319877Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "def Tokenize(column, seq_len):\n",
+    "    ##Create vocabulary of words from column\n",
+    "    corpus = [word for text in column for word in text.split()]\n",
+    "    count_words = Counter(corpus)\n",
+    "    sorted_words = count_words.most_common()\n",
+    "    vocab_to_int = {w:i+1 for i, (w,c) in enumerate(sorted_words)}\n",
+    "\n",
+    "    ##Tokenize the columns text using the vocabulary\n",
+    "    text_int = []\n",
+    "    for text in column:\n",
+    "        r = [vocab_to_int[word] for word in text.split()]\n",
+    "        text_int.append(r)\n",
+    "    ##Add padding to tokens\n",
+    "    features = np.zeros((len(text_int), seq_len), dtype = int)\n",
+    "    for i, review in enumerate(text_int):\n",
+    "        if len(review) <= seq_len:\n",
+    "            zeros = list(np.zeros(seq_len - len(review)))\n",
+    "            new = zeros + review\n",
+    "        else:\n",
+    "            new = review[: seq_len]\n",
+    "        features[i, :] = np.array(new)\n",
+    "\n",
+    "    return sorted_words, features"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 33,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:09.336018Z",
+     "iopub.status.busy": "2022-04-10T13:54:09.335440Z",
+     "iopub.status.idle": "2022-04-10T13:54:10.456968Z",
+     "shell.execute_reply": "2022-04-10T13:54:10.455880Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:09.335981Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "vocabulary, tokenized_column = Tokenize(df[\"tweet_clean\"], max_len)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 34,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:10.458860Z",
+     "iopub.status.busy": "2022-04-10T13:54:10.458639Z",
+     "iopub.status.idle": "2022-04-10T13:54:10.463872Z",
+     "shell.execute_reply": "2022-04-10T13:54:10.463271Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:10.458833Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'love best respons hotcak manag film noncommitt meh adolesc mkr'"
+      ]
+     },
+     "execution_count": 34,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df[\"tweet_clean\"].iloc[10]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 35,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:10.465643Z",
+     "iopub.status.busy": "2022-04-10T13:54:10.464780Z",
+     "iopub.status.idle": "2022-04-10T13:54:10.478538Z",
+     "shell.execute_reply": "2022-04-10T13:54:10.477981Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:10.465594Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([    0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+       "           0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+       "           0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+       "           0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+       "           0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+       "           0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+       "           0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+       "           0,     0,     0,     0,     0,     0,    66,   219,   503,\n",
+       "        8001,  1300,  1142, 13587,  4686,  9804,    34])"
+      ]
+     },
+     "execution_count": 35,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "tokenized_column[10]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 36,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:10.480501Z",
+     "iopub.status.busy": "2022-04-10T13:54:10.480157Z",
+     "iopub.status.idle": "2022-04-10T13:54:10.490597Z",
+     "shell.execute_reply": "2022-04-10T13:54:10.489483Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:10.480471Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "keys = []\n",
+    "values = []\n",
+    "for key, value in vocabulary[:20]:\n",
+    "    keys.append(key)\n",
+    "    values.append(value)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**Word Embedding by Word2Vec**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 37,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:10.492457Z",
+     "iopub.status.busy": "2022-04-10T13:54:10.492090Z",
+     "iopub.status.idle": "2022-04-10T13:54:10.564711Z",
+     "shell.execute_reply": "2022-04-10T13:54:10.563650Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:10.492408Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "Word2vec_train_data = list(map(lambda x: x.split(), X_train))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 38,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:10.566218Z",
+     "iopub.status.busy": "2022-04-10T13:54:10.565867Z",
+     "iopub.status.idle": "2022-04-10T13:54:10.570541Z",
+     "shell.execute_reply": "2022-04-10T13:54:10.569606Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:10.566180Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "EMBEDDING_DIM = 200"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 39,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:10.572385Z",
+     "iopub.status.busy": "2022-04-10T13:54:10.572017Z",
+     "iopub.status.idle": "2022-04-10T13:54:13.185462Z",
+     "shell.execute_reply": "2022-04-10T13:54:13.184869Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:10.572343Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "word2vec_model = Word2Vec(Word2vec_train_data, vector_size=EMBEDDING_DIM)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 40,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:13.186836Z",
+     "iopub.status.busy": "2022-04-10T13:54:13.186499Z",
+     "iopub.status.idle": "2022-04-10T13:54:13.191740Z",
+     "shell.execute_reply": "2022-04-10T13:54:13.190905Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:13.186797Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Vocabulary size: 33009\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"Vocabulary size: {len(vocabulary) + 1}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 41,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:13.195499Z",
+     "iopub.status.busy": "2022-04-10T13:54:13.195124Z",
+     "iopub.status.idle": "2022-04-10T13:54:13.203851Z",
+     "shell.execute_reply": "2022-04-10T13:54:13.202988Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:13.195398Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "VOCAB_SIZE = len(vocabulary) + 1 #+1 for the padding"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 42,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:13.206042Z",
+     "iopub.status.busy": "2022-04-10T13:54:13.205800Z",
+     "iopub.status.idle": "2022-04-10T13:54:13.281320Z",
+     "shell.execute_reply": "2022-04-10T13:54:13.280488Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:13.206013Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Embedding Matrix Shape: (33009, 200)\n"
+     ]
+    }
+   ],
+   "source": [
+    "embedding_matrix = np.zeros((VOCAB_SIZE, EMBEDDING_DIM))\n",
+    "    \n",
+    "#fill the embedding matrix with the pre trained values from word2vec\n",
+    "#    corresponding to word (string), token (number associated to the word)\n",
+    "for word, token in vocabulary:\n",
+    "    if word2vec_model.wv.__contains__(word):\n",
+    "        embedding_matrix[token] = word2vec_model.wv.__getitem__(word)\n",
+    "\n",
+    "print(\"Embedding Matrix Shape:\", embedding_matrix.shape)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 43,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T13:54:13.282765Z",
+     "iopub.status.busy": "2022-04-10T13:54:13.282530Z",
+     "iopub.status.idle": "2022-04-10T13:54:13.286704Z",
+     "shell.execute_reply": "2022-04-10T13:54:13.285963Z",
+     "shell.execute_reply.started": "2022-04-10T13:54:13.282735Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "X = tokenized_column\n",
+    "y = df['val'].values"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 44,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:02:32.092184Z",
+     "iopub.status.busy": "2022-04-10T14:02:32.091830Z",
+     "iopub.status.idle": "2022-04-10T14:02:32.130799Z",
+     "shell.execute_reply": "2022-04-10T14:02:32.129775Z",
+     "shell.execute_reply.started": "2022-04-10T14:02:32.092146Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 45,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:02:41.185998Z",
+     "iopub.status.busy": "2022-04-10T14:02:41.185703Z",
+     "iopub.status.idle": "2022-04-10T14:02:41.214418Z",
+     "shell.execute_reply": "2022-04-10T14:02:41.213788Z",
+     "shell.execute_reply.started": "2022-04-10T14:02:41.185965Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "X_train, X_valid, y_train, y_valid = train_test_split(X_train, y_train, test_size=0.1, stratify=y_train, random_state=42)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 46,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:02:48.750180Z",
+     "iopub.status.busy": "2022-04-10T14:02:48.749573Z",
+     "iopub.status.idle": "2022-04-10T14:02:48.756631Z",
+     "shell.execute_reply": "2022-04-10T14:02:48.755903Z",
+     "shell.execute_reply.started": "2022-04-10T14:02:48.750137Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[   0, 5683],\n",
+       "       [   1, 5638],\n",
+       "       [   2, 5549],\n",
+       "       [   3, 5264],\n",
+       "       [   4, 4587]], dtype=int64)"
+      ]
+     },
+     "execution_count": 46,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "(unique, counts) = np.unique(y_train, return_counts=True)\n",
+    "np.asarray((unique, counts)).T"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 47,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:03:01.381042Z",
+     "iopub.status.busy": "2022-04-10T14:03:01.380760Z",
+     "iopub.status.idle": "2022-04-10T14:03:01.386070Z",
+     "shell.execute_reply": "2022-04-10T14:03:01.385122Z",
+     "shell.execute_reply.started": "2022-04-10T14:03:01.381011Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "train_data = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))\n",
+    "test_data = TensorDataset(torch.from_numpy(X_test), torch.from_numpy(y_test))\n",
+    "valid_data = TensorDataset(torch.from_numpy(X_valid), torch.from_numpy(y_valid))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 48,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:03:02.167357Z",
+     "iopub.status.busy": "2022-04-10T14:03:02.166743Z",
+     "iopub.status.idle": "2022-04-10T14:03:02.173378Z",
+     "shell.execute_reply": "2022-04-10T14:03:02.172132Z",
+     "shell.execute_reply.started": "2022-04-10T14:03:02.167309Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "BATCH_SIZE = 32\n",
+    "train_loader = DataLoader(train_data, shuffle=True, batch_size=BATCH_SIZE, drop_last=True) \n",
+    "valid_loader = DataLoader(valid_data, shuffle=True, batch_size=BATCH_SIZE, drop_last=True)\n",
+    "test_loader = DataLoader(test_data, shuffle=True, batch_size=BATCH_SIZE, drop_last=True)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 49,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:03:05.257182Z",
+     "iopub.status.busy": "2022-04-10T14:03:05.256885Z",
+     "iopub.status.idle": "2022-04-10T14:03:05.261664Z",
+     "shell.execute_reply": "2022-04-10T14:03:05.260728Z",
+     "shell.execute_reply.started": "2022-04-10T14:03:05.257149Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**BI LSTM classifier Model**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 50,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:03:05.494350Z",
+     "iopub.status.busy": "2022-04-10T14:03:05.494079Z",
+     "iopub.status.idle": "2022-04-10T14:03:05.506370Z",
+     "shell.execute_reply": "2022-04-10T14:03:05.505301Z",
+     "shell.execute_reply.started": "2022-04-10T14:03:05.494320Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "class BiLSTM_Sentiment_Classifier(nn.Module):\n",
+    "\n",
+    "    def __init__(self, vocab_size, embedding_dim, hidden_dim, num_classes, lstm_layers, bidirectional,batch_size, dropout):\n",
+    "        super(BiLSTM_Sentiment_Classifier,self).__init__()\n",
+    "        \n",
+    "        self.lstm_layers = lstm_layers\n",
+    "        self.num_directions = 2 if bidirectional else 1\n",
+    "        self.hidden_dim = hidden_dim\n",
+    "        self.num_classes = num_classes\n",
+    "        self.batch_size = batch_size\n",
+    "        \n",
+    "\n",
+    "        self.embedding = nn.Embedding(vocab_size, embedding_dim)\n",
+    "        \n",
+    "        self.lstm = nn.LSTM(embedding_dim,\n",
+    "                            hidden_dim,\n",
+    "                            num_layers=lstm_layers,\n",
+    "                            dropout=dropout,\n",
+    "                            bidirectional=bidirectional,\n",
+    "                            batch_first=True)\n",
+    "\n",
+    "        self.fc = nn.Linear(hidden_dim*self.num_directions, num_classes)\n",
+    "        self.softmax = nn.LogSoftmax(dim=1)\n",
+    "        \n",
+    "    def forward(self, x, hidden):\n",
+    "        self.batch_size = x.size(0)\n",
+    "        ##EMBEDDING LAYER\n",
+    "        embedded = self.embedding(x)\n",
+    "        #LSTM LAYERS\n",
+    "        out, hidden = self.lstm(embedded, hidden)\n",
+    "        #Extract only the hidden state from the last LSTM cell\n",
+    "        out = out[:,-1,:]\n",
+    "        #FULLY CONNECTED LAYERS\n",
+    "        out = self.fc(out)\n",
+    "        out = self.softmax(out)\n",
+    "\n",
+    "        return out, hidden\n",
+    "\n",
+    "    def init_hidden(self, batch_size):\n",
+    "        #Initialization of the LSTM hidden and cell states\n",
+    "        h0 = torch.zeros((self.lstm_layers*self.num_directions, batch_size, self.hidden_dim)).detach().to(DEVICE)\n",
+    "        c0 = torch.zeros((self.lstm_layers*self.num_directions, batch_size, self.hidden_dim)).detach().to(DEVICE)\n",
+    "        hidden = (h0, c0)\n",
+    "        return hidden"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 51,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:03:05.630060Z",
+     "iopub.status.busy": "2022-04-10T14:03:05.629248Z",
+     "iopub.status.idle": "2022-04-10T14:03:05.758861Z",
+     "shell.execute_reply": "2022-04-10T14:03:05.758040Z",
+     "shell.execute_reply.started": "2022-04-10T14:03:05.629998Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "BiLSTM_Sentiment_Classifier(\n",
+      "  (embedding): Embedding(33009, 200)\n",
+      "  (lstm): LSTM(200, 100, batch_first=True, dropout=0.5, bidirectional=True)\n",
+      "  (fc): Linear(in_features=200, out_features=5, bias=True)\n",
+      "  (softmax): LogSoftmax(dim=1)\n",
+      ")\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "c:\\users\\kasan\\pycharmprojects\\pythonproject\\venv\\lib\\site-packages\\torch\\nn\\modules\\rnn.py:62: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.5 and num_layers=1\n",
+      "  warnings.warn(\"dropout option adds dropout after all but last \"\n"
+     ]
+    }
+   ],
+   "source": [
+    "model = BiLSTM_Sentiment_Classifier(VOCAB_SIZE, EMBEDDING_DIM, 100,5,1,True, BATCH_SIZE, 0.5)\n",
+    "model = model.to('cpu')\n",
+    "\n",
+    "#Initialize embedding with the previously defined embedding matrix\n",
+    "model.embedding.weight.data.copy_(torch.from_numpy(embedding_matrix))\n",
+    "#Allow the embedding matrix to be fined tuned to better adapt to out dataset and get higher accuracy\n",
+    "model.embedding.weight.requires_grad=True\n",
+    "\n",
+    "print(model)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 52,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:03:05.810666Z",
+     "iopub.status.busy": "2022-04-10T14:03:05.809840Z",
+     "iopub.status.idle": "2022-04-10T14:03:05.815829Z",
+     "shell.execute_reply": "2022-04-10T14:03:05.814731Z",
+     "shell.execute_reply.started": "2022-04-10T14:03:05.810615Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "criterion = nn.NLLLoss()\n",
+    "optimizer = torch.optim.AdamW(model.parameters(), lr=0.0003, weight_decay = 0.000005)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 53,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:03:05.945847Z",
+     "iopub.status.busy": "2022-04-10T14:03:05.945449Z",
+     "iopub.status.idle": "2022-04-10T14:15:31.947528Z",
+     "shell.execute_reply": "2022-04-10T14:15:31.946456Z",
+     "shell.execute_reply.started": "2022-04-10T14:03:05.945817Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Epoch 1:Validation accuracy increased (0.000000 --> 91.711957).  Saving model ...\n",
+      "\tTrain_loss : 0.6901 Val_loss : 0.2628\n",
+      "\tTrain_acc : 73.821% Val_acc : 91.712%\n",
+      "Epoch 2:Validation accuracy increased (91.711957 --> 92.730978).  Saving model ...\n",
+      "\tTrain_loss : 0.1902 Val_loss : 0.2081\n",
+      "\tTrain_acc : 93.660% Val_acc : 92.731%\n",
+      "Epoch 3:Validation accuracy did not increase\n",
+      "\tTrain_loss : 0.1272 Val_loss : 0.2232\n",
+      "\tTrain_acc : 95.797% Val_acc : 92.188%\n",
+      "Epoch 4:Validation accuracy did not increase\n",
+      "\tTrain_loss : 0.0874 Val_loss : 0.2151\n",
+      "\tTrain_acc : 97.163% Val_acc : 92.391%\n",
+      "Epoch 5:Validation accuracy did not increase\n",
+      "\tTrain_loss : 0.0594 Val_loss : 0.2312\n",
+      "\tTrain_acc : 98.211% Val_acc : 92.425%\n"
+     ]
+    }
+   ],
+   "source": [
+    "total_step = len(train_loader)\n",
+    "total_step_val = len(valid_loader)\n",
+    "\n",
+    "early_stopping_patience = 4\n",
+    "early_stopping_counter = 0\n",
+    "\n",
+    "valid_acc_max = 0 # Initialize best accuracy top 0\n",
+    "\n",
+    "for e in range(5):\n",
+    "\n",
+    "    #lists to host the train and validation losses of every batch for each epoch\n",
+    "    train_loss, valid_loss  = [], []\n",
+    "    #lists to host the train and validation accuracy of every batch for each epoch\n",
+    "    train_acc, valid_acc  = [], []\n",
+    "\n",
+    "    #lists to host the train and validation predictions of every batch for each epoch\n",
+    "    y_train_list, y_val_list = [], []\n",
+    "\n",
+    "    #initalize number of total and correctly classified texts during training and validation\n",
+    "    correct, correct_val = 0, 0\n",
+    "    total, total_val = 0, 0\n",
+    "    running_loss, running_loss_val = 0, 0\n",
+    "\n",
+    "\n",
+    "    ####TRAINING LOOP####\n",
+    "\n",
+    "    model.train()\n",
+    "\n",
+    "    for inputs, labels in train_loader:\n",
+    "        inputs, labels = inputs.to(DEVICE), labels.to(DEVICE) #load features and targets in device\n",
+    "\n",
+    "        h = model.init_hidden(labels.size(0))\n",
+    "\n",
+    "        model.zero_grad() #reset gradients \n",
+    "\n",
+    "        output, h = model(inputs,h) #get output and hidden states from LSTM network\n",
+    "        \n",
+    "        loss = criterion(output, labels)\n",
+    "        loss.backward()\n",
+    "        running_loss += loss.item()\n",
+    "        \n",
+    "        optimizer.step()\n",
+    "\n",
+    "        y_pred_train = torch.argmax(output, dim=1) #get tensor of predicted values on the training set\n",
+    "        y_train_list.extend(y_pred_train.squeeze().tolist()) #transform tensor to list and the values to the list\n",
+    "        \n",
+    "        correct += torch.sum(y_pred_train==labels).item() #count correctly classified texts per batch\n",
+    "        total += labels.size(0) #count total texts per batch\n",
+    "\n",
+    "    train_loss.append(running_loss / total_step)\n",
+    "    train_acc.append(100 * correct / total)\n",
+    "\n",
+    "    ####VALIDATION LOOP####\n",
+    "    \n",
+    "    with torch.no_grad():\n",
+    "        \n",
+    "        model.eval()\n",
+    "        \n",
+    "        for inputs, labels in valid_loader:\n",
+    "            inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)\n",
+    "\n",
+    "            val_h = model.init_hidden(labels.size(0))\n",
+    "\n",
+    "            output, val_h = model(inputs, val_h)\n",
+    "\n",
+    "            val_loss = criterion(output, labels)\n",
+    "            running_loss_val += val_loss.item()\n",
+    "\n",
+    "            y_pred_val = torch.argmax(output, dim=1)\n",
+    "            y_val_list.extend(y_pred_val.squeeze().tolist())\n",
+    "\n",
+    "            correct_val += torch.sum(y_pred_val==labels).item()\n",
+    "            total_val += labels.size(0)\n",
+    "\n",
+    "        valid_loss.append(running_loss_val / total_step_val)\n",
+    "        valid_acc.append(100 * correct_val / total_val)\n",
+    "\n",
+    "    #Save model if validation accuracy increases\n",
+    "    if np.mean(valid_acc) >= valid_acc_max:\n",
+    "        torch.save(model.state_dict(), './state_dict.pt')\n",
+    "        print(f'Epoch {e+1}:Validation accuracy increased ({valid_acc_max:.6f} --> {np.mean(valid_acc):.6f}).  Saving model ...')\n",
+    "        valid_acc_max = np.mean(valid_acc)\n",
+    "        early_stopping_counter=0 #reset counter if validation accuracy increases\n",
+    "    else:\n",
+    "        print(f'Epoch {e+1}:Validation accuracy did not increase')\n",
+    "        early_stopping_counter+=1 #increase counter if validation accuracy does not increase\n",
+    "        \n",
+    "    if early_stopping_counter > early_stopping_patience:\n",
+    "        print('Early stopped at epoch :', e+1)\n",
+    "        break\n",
+    "    \n",
+    "    print(f'\\tTrain_loss : {np.mean(train_loss):.4f} Val_loss : {np.mean(valid_loss):.4f}')\n",
+    "    print(f'\\tTrain_acc : {np.mean(train_acc):.3f}% Val_acc : {np.mean(valid_acc):.3f}%')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 54,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:15:31.950168Z",
+     "iopub.status.busy": "2022-04-10T14:15:31.949869Z",
+     "iopub.status.idle": "2022-04-10T14:15:40.931791Z",
+     "shell.execute_reply": "2022-04-10T14:15:40.930762Z",
+     "shell.execute_reply.started": "2022-04-10T14:15:31.950130Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "model.eval()\n",
+    "y_pred_list = []\n",
+    "y_test_list = []\n",
+    "for inputs, labels in test_loader:\n",
+    "    inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)\n",
+    "    test_h = model.init_hidden(labels.size(0))\n",
+    "\n",
+    "    output, val_h = model(inputs, test_h)\n",
+    "    y_pred_test = torch.argmax(output, dim=1)\n",
+    "    y_pred_list.extend(y_pred_test.squeeze().tolist())\n",
+    "    y_test_list.extend(labels.squeeze().tolist())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 55,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:21:04.435569Z",
+     "iopub.status.busy": "2022-04-10T14:21:04.435285Z",
+     "iopub.status.idle": "2022-04-10T14:21:04.465658Z",
+     "shell.execute_reply": "2022-04-10T14:21:04.464832Z",
+     "shell.execute_reply.started": "2022-04-10T14:21:04.435538Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Classification Report for Bi-LSTM :\n",
+      "               precision    recall  f1-score   support\n",
+      "\n",
+      "    religion       0.95      0.95      0.95      1574\n",
+      "         age       0.96      0.98      0.97      1560\n",
+      "   ethnicity       0.98      0.97      0.98      1537\n",
+      "      gender       0.90      0.90      0.90      1455\n",
+      "not bullying       0.81      0.81      0.81      1266\n",
+      "\n",
+      "    accuracy                           0.92      7392\n",
+      "   macro avg       0.92      0.92      0.92      7392\n",
+      "weighted avg       0.92      0.92      0.92      7392\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "print('Classification Report for Bi-LSTM :\\n', classification_report(y_test_list, y_pred_list, target_names=val))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 56,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:54:50.484956Z",
+     "iopub.status.busy": "2022-04-10T14:54:50.484275Z",
+     "iopub.status.idle": "2022-04-10T14:54:50.507498Z",
+     "shell.execute_reply": "2022-04-10T14:54:50.506523Z",
+     "shell.execute_reply.started": "2022-04-10T14:54:50.484888Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[1488,    0,    6,    7,   73],\n",
+       "       [   6, 1522,    1,    7,   24],\n",
+       "       [   7,    4, 1498,   20,    8],\n",
+       "       [   7,    3,   13, 1303,  129],\n",
+       "       [  58,   52,   17,  116, 1023]], dtype=int64)"
+      ]
+     },
+     "execution_count": 56,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "confusion_matrix(y_test_list, y_pred_list)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**Recurrent Net with LSTM**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 57,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:34:25.778097Z",
+     "iopub.status.busy": "2022-04-10T14:34:25.777776Z",
+     "iopub.status.idle": "2022-04-10T14:34:25.785578Z",
+     "shell.execute_reply": "2022-04-10T14:34:25.784934Z",
+     "shell.execute_reply.started": "2022-04-10T14:34:25.778064Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "def RNN():\n",
+    "    inputs = Input(name='inputs', shape=[max_len])\n",
+    "    \n",
+    "    # This layer can only be used as the first layer in a model.\n",
+    "    # Turns positive integers (index values) into dense vectors of fixed size.\n",
+    "    # The model will take as input an integer matrix of size (batch, input_length) and the \n",
+    "    # largest integer (i.e. word index) in the input should be not larger than vocabulary_size+1.  \n",
+    "    # Now model's output_shape is (None, max_len, output_dim), where `None` is the batch dimension. \n",
+    "    layer = Embedding(input_dim = VOCAB_SIZE+1, output_dim = 500, input_length = max_len, mask_zero=True)(inputs)\n",
+    "\n",
+    "    # num_params = input_dim * output_dim = 2689 * 500 = 1344500  \n",
+    "\n",
+    "    layer = LSTM(64)(layer)   # num_params = [(num_units + input_dim + 1) * num_units] * 4\n",
+    "                              # 144640 = [(64 + 500 +1) * 64] *4  \n",
+    "\n",
+    "    layer = Dense(256, name='FC1')(layer)\n",
+    "    layer = Activation('relu')(layer)\n",
+    "    layer = Dropout(0.5)(layer)\n",
+    "    layer = Dense(1, name='out_layer')(layer)\n",
+    "    layer = Activation('sigmoid')(layer)\n",
+    "    model = Model(inputs=inputs, outputs=layer)\n",
+    "    return model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 58,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:34:26.701994Z",
+     "iopub.status.busy": "2022-04-10T14:34:26.701694Z",
+     "iopub.status.idle": "2022-04-10T14:34:28.181574Z",
+     "shell.execute_reply": "2022-04-10T14:34:28.179841Z",
+     "shell.execute_reply.started": "2022-04-10T14:34:26.701958Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Model: \"model\"\n",
+      "_________________________________________________________________\n",
+      "Layer (type)                 Output Shape              Param #   \n",
+      "=================================================================\n",
+      "inputs (InputLayer)          [(None, 79)]              0         \n",
+      "_________________________________________________________________\n",
+      "embedding (Embedding)        (None, 79, 500)           16505000  \n",
+      "_________________________________________________________________\n",
+      "lstm (LSTM)                  (None, 64)                144640    \n",
+      "_________________________________________________________________\n",
+      "FC1 (Dense)                  (None, 256)               16640     \n",
+      "_________________________________________________________________\n",
+      "activation (Activation)      (None, 256)               0         \n",
+      "_________________________________________________________________\n",
+      "dropout (Dropout)            (None, 256)               0         \n",
+      "_________________________________________________________________\n",
+      "out_layer (Dense)            (None, 1)                 257       \n",
+      "_________________________________________________________________\n",
+      "activation_1 (Activation)    (None, 1)                 0         \n",
+      "=================================================================\n",
+      "Total params: 16,666,537\n",
+      "Trainable params: 16,666,537\n",
+      "Non-trainable params: 0\n",
+      "_________________________________________________________________\n"
+     ]
+    }
+   ],
+   "source": [
+    "rnnmodel = RNN()\n",
+    "rnnmodel.summary()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 59,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:34:51.497798Z",
+     "iopub.status.busy": "2022-04-10T14:34:51.496769Z",
+     "iopub.status.idle": "2022-04-10T14:34:51.514668Z",
+     "shell.execute_reply": "2022-04-10T14:34:51.513971Z",
+     "shell.execute_reply.started": "2022-04-10T14:34:51.497733Z"
+    }
+   },
+   "outputs": [],
+   "source": [
+    "rnnmodel.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 60,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T14:56:29.749710Z",
+     "iopub.status.busy": "2022-04-10T14:56:29.748943Z",
+     "iopub.status.idle": "2022-04-10T15:43:39.894643Z",
+     "shell.execute_reply": "2022-04-10T15:43:39.892904Z",
+     "shell.execute_reply.started": "2022-04-10T14:56:29.749665Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Epoch 1/20\n",
+      "535/535 [==============================] - 129s 235ms/step - loss: 0.0000e+00 - accuracy: 0.2788 - val_loss: 0.0000e+00 - val_accuracy: 0.2658\n",
+      "Epoch 2/20\n",
+      "535/535 [==============================] - 125s 233ms/step - loss: 0.0000e+00 - accuracy: 0.2958 - val_loss: 0.0000e+00 - val_accuracy: 0.3084\n",
+      "Epoch 3/20\n",
+      "535/535 [==============================] - 126s 235ms/step - loss: 0.0000e+00 - accuracy: 0.3495 - val_loss: 0.0000e+00 - val_accuracy: 0.3563\n",
+      "Epoch 4/20\n",
+      "535/535 [==============================] - 124s 232ms/step - loss: 0.0000e+00 - accuracy: 0.3752 - val_loss: 0.0000e+00 - val_accuracy: 0.3869\n",
+      "Epoch 5/20\n",
+      "535/535 [==============================] - 124s 231ms/step - loss: 0.0000e+00 - accuracy: 0.3877 - val_loss: 0.0000e+00 - val_accuracy: 0.3821\n",
+      "Epoch 6/20\n",
+      "535/535 [==============================] - 123s 230ms/step - loss: 0.0000e+00 - accuracy: 0.4028 - val_loss: 0.0000e+00 - val_accuracy: 0.3524\n",
+      "Epoch 7/20\n",
+      "535/535 [==============================] - 124s 232ms/step - loss: 0.0000e+00 - accuracy: 0.3947 - val_loss: 0.0000e+00 - val_accuracy: 0.3794\n",
+      "Epoch 8/20\n",
+      "535/535 [==============================] - 129s 241ms/step - loss: 0.0000e+00 - accuracy: 0.4080 - val_loss: 0.0000e+00 - val_accuracy: 0.3957\n",
+      "Epoch 9/20\n",
+      "535/535 [==============================] - 174s 326ms/step - loss: 0.0000e+00 - accuracy: 0.4114 - val_loss: 0.0000e+00 - val_accuracy: 0.3997\n",
+      "Epoch 10/20\n",
+      "535/535 [==============================] - 139s 260ms/step - loss: 0.0000e+00 - accuracy: 0.4128 - val_loss: 0.0000e+00 - val_accuracy: 0.3985\n",
+      "Epoch 11/20\n",
+      "535/535 [==============================] - 133s 249ms/step - loss: 0.0000e+00 - accuracy: 0.4142 - val_loss: 0.0000e+00 - val_accuracy: 0.4029\n",
+      "Epoch 12/20\n",
+      "535/535 [==============================] - 130s 243ms/step - loss: 0.0000e+00 - accuracy: 0.4145 - val_loss: 0.0000e+00 - val_accuracy: 0.4002\n",
+      "Epoch 13/20\n",
+      "535/535 [==============================] - 131s 246ms/step - loss: 0.0000e+00 - accuracy: 0.4139 - val_loss: 0.0000e+00 - val_accuracy: 0.3997\n",
+      "Epoch 14/20\n",
+      "535/535 [==============================] - 130s 242ms/step - loss: 0.0000e+00 - accuracy: 0.4138 - val_loss: 0.0000e+00 - val_accuracy: 0.3955\n",
+      "Epoch 15/20\n",
+      "535/535 [==============================] - 130s 243ms/step - loss: 0.0000e+00 - accuracy: 0.4147 - val_loss: 0.0000e+00 - val_accuracy: 0.3961\n",
+      "Epoch 16/20\n",
+      "535/535 [==============================] - 128s 240ms/step - loss: 0.0000e+00 - accuracy: 0.4143 - val_loss: 0.0000e+00 - val_accuracy: 0.3974\n",
+      "Epoch 17/20\n",
+      "535/535 [==============================] - 129s 242ms/step - loss: 0.0000e+00 - accuracy: 0.4153 - val_loss: 0.0000e+00 - val_accuracy: 0.3958\n",
+      "Epoch 18/20\n",
+      "535/535 [==============================] - 129s 241ms/step - loss: 0.0000e+00 - accuracy: 0.4146 - val_loss: 0.0000e+00 - val_accuracy: 0.3938\n",
+      "Epoch 19/20\n",
+      "535/535 [==============================] - 133s 249ms/step - loss: 0.0000e+00 - accuracy: 0.4146 - val_loss: 0.0000e+00 - val_accuracy: 0.3928\n",
+      "Epoch 20/20\n",
+      "535/535 [==============================] - 130s 243ms/step - loss: 0.0000e+00 - accuracy: 0.4154 - val_loss: 0.0000e+00 - val_accuracy: 0.3959\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "<tensorflow.python.keras.callbacks.History at 0x255c0678730>"
+      ]
+     },
+     "execution_count": 60,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "rnnmodel.fit(X_train, y_train, batch_size=50,epochs=20, \n",
+    "          validation_data = (X_test, y_test))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**RNN LSTM Confusion matrix**"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 61,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T15:45:42.016825Z",
+     "iopub.status.busy": "2022-04-10T15:45:42.015691Z",
+     "iopub.status.idle": "2022-04-10T15:45:50.086618Z",
+     "shell.execute_reply": "2022-04-10T15:45:50.085939Z",
+     "shell.execute_reply.started": "2022-04-10T15:45:42.016765Z"
+    }
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[1410,  169,    0,    0,    0],\n",
+       "       [  37, 1529,    0,    0,    0],\n",
+       "       [  31, 1511,    0,    0,    0],\n",
+       "       [  17, 1445,    0,    0,    0],\n",
+       "       [  70, 1204,    0,    0,    0]], dtype=int64)"
+      ]
+     },
+     "execution_count": 61,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "y_pred = rnnmodel.predict(X_test) \n",
+    "confusion_matrix( y_test,y_pred)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 62,
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2022-04-10T15:46:49.673669Z",
+     "iopub.status.busy": "2022-04-10T15:46:49.673351Z",
+     "iopub.status.idle": "2022-04-10T15:46:49.700055Z",
+     "shell.execute_reply": "2022-04-10T15:46:49.699447Z",
+     "shell.execute_reply.started": "2022-04-10T15:46:49.673636Z"
+    }
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Classification Report for LSTM :\n",
+      "               precision    recall  f1-score   support\n",
+      "\n",
+      "    religion       0.90      0.89      0.90      1579\n",
+      "         age       0.26      0.98      0.41      1566\n",
+      "   ethnicity       0.00      0.00      0.00      1542\n",
+      "      gender       0.00      0.00      0.00      1462\n",
+      "not bullying       0.00      0.00      0.00      1274\n",
+      "\n",
+      "    accuracy                           0.40      7423\n",
+      "   macro avg       0.23      0.37      0.26      7423\n",
+      "weighted avg       0.25      0.40      0.28      7423\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "c:\\users\\kasan\\pycharmprojects\\pythonproject\\venv\\lib\\site-packages\\sklearn\\metrics\\_classification.py:1248: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.\n",
+      "  _warn_prf(average, modifier, msg_start, len(result))\n",
+      "c:\\users\\kasan\\pycharmprojects\\pythonproject\\venv\\lib\\site-packages\\sklearn\\metrics\\_classification.py:1248: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.\n",
+      "  _warn_prf(average, modifier, msg_start, len(result))\n",
+      "c:\\users\\kasan\\pycharmprojects\\pythonproject\\venv\\lib\\site-packages\\sklearn\\metrics\\_classification.py:1248: UndefinedMetricWarning: Precision and F-score are ill-defined and being set to 0.0 in labels with no predicted samples. Use `zero_division` parameter to control this behavior.\n",
+      "  _warn_prf(average, modifier, msg_start, len(result))\n"
+     ]
+    }
+   ],
+   "source": [
+    "print('Classification Report for LSTM :\\n', classification_report(y_test,y_pred, target_names=val))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
